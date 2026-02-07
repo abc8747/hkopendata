@@ -4,9 +4,9 @@ from typing import List
 import httpx
 from pydantic_xml import BaseXmlModel, element, wrapped
 
-from . import API_ENDPOINT, DATA_DIR, DEFAULT_PARAMS
+from . import API_ENDPOINT, DATA_DIR, DEFAULT_PARAMS, ensure_http1
 
-_FP = DATA_DIR / "version.xml"
+_FP = DATA_DIR / "version.xml"  # TODO: save to cache instead?
 
 
 class Facility(BaseXmlModel):
@@ -44,6 +44,7 @@ class Version(BaseXmlModel, tag="result"):
 
     @staticmethod
     async def fetch_raw(client: httpx.AsyncClient) -> str:
+        ensure_http1(client)
         request = httpx.Request(
             "GET",
             f"{API_ENDPOINT}/check_version",
@@ -55,6 +56,7 @@ class Version(BaseXmlModel, tag="result"):
 
     @staticmethod
     async def download(client: httpx.AsyncClient) -> None:
+        ensure_http1(client)
         xml = await Version.fetch_raw(client)
         _FP.parent.mkdir(parents=True, exist_ok=True)
         with open(_FP, "w") as f:

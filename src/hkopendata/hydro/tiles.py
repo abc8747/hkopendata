@@ -13,7 +13,7 @@ from rich.progress import (
     TransferSpeedColumn,
 )
 
-from . import API_ENDPOINT, DEFAULT_PARAMS
+from . import API_ENDPOINT, DEFAULT_PARAMS, ensure_http1
 
 
 class _OfflineTilesVersion(BaseXmlModel, tag="result"):
@@ -22,6 +22,7 @@ class _OfflineTilesVersion(BaseXmlModel, tag="result"):
 
     @staticmethod
     async def fetch(client: httpx.AsyncClient) -> str:
+        ensure_http1(client)
         response = await client.get(
             f"{API_ENDPOINT}/map_download", params=DEFAULT_PARAMS
         )
@@ -36,6 +37,7 @@ class _OfflineTilesVersion(BaseXmlModel, tag="result"):
 class OfflineTiles:
     @staticmethod
     async def fetch(client: httpx.AsyncClient) -> AsyncGenerator[bytes, None]:
+        ensure_http1(client)
         request = _OfflineTilesVersion.from_xml(
             await _OfflineTilesVersion.fetch(client)
         ).request
@@ -64,6 +66,7 @@ class OfflineTiles:
 
     @staticmethod
     async def download(client: httpx.AsyncClient, fp: Path) -> None:
+        ensure_http1(client)
         async with aiofiles.open(fp, "wb") as f:
             async for chunk in OfflineTiles.fetch(client):
                 await f.write(chunk)

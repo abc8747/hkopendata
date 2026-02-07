@@ -28,7 +28,7 @@ async def ocf_download(path_base: Path) -> None:
     # daily_dir = path_run / "daily"
     # daily_dir.mkdir(parents=True, exist_ok=True)
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(http2=True) as client:
         stations_all = []
         with Progress(
             SpinnerColumn(),

@@ -44,8 +44,8 @@ Download raster tiles from the Hong Kong Hydrographic Office, Marine Department:
 
 Objective consensus forecast (OCF) weather predictions from the Hong Kong Observatory.
 
-- forecast: https://www.hko.gov.hk/en/wxinfo/awsgis/regional_weather_gis.html
-- anemometer: https://maps.hko.gov.hk/ocf/index_e.html
+- forecast: <https://www.hko.gov.hk/en/wxinfo/awsgis/regional_weather_gis.html>
+- anemometer: <https://maps.hko.gov.hk/ocf/index_e.html>
 
 Wind Speed analysis for TC Nalgae:
 ![Analysis](docs/assets/nalgae_wind.png)

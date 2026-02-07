@@ -30,11 +30,12 @@ def hydro_download() -> None:
     from .hydro.version import Version
 
     async def main() -> None:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(http1=True, http2=False) as client:
             await Version.download(client)
             metadata = Version.load()
             rich.print(metadata)
             fp = PATH_CACHE / "hydro" / metadata.file_name
+            fp.parent.mkdir(parents=True, exist_ok=True)
             await OfflineTiles.download(client, fp)
 
     asyncio.run(main())
