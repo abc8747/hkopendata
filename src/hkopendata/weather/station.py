@@ -53,7 +53,7 @@ def grid() -> Generator[Station, None, None]:
 def stations() -> Generator[Station, None, None]:
     """Transform original JavaScript representation to records."""
     with open(DATA_DIR / "station_ids.json") as f:
-        stations: Stations = orjson.loads(f.read())  # type: ignore
+        stations: Stations = orjson.loads(f.read())
     for station_id in stations["ALL_STATIONS"]:
         yield Station(
             id=station_id,

@@ -58,5 +58,13 @@ def ocf_plot_hourly_wind(path_base: Path | None = None) -> None:
     run.ocf_plot_hourly_wind(path_base or PATH_CACHE / "ocf_runs")
 
 
+@app.command()
+def ocf_plot_grid_wind(path_base: Path | None = None) -> None:
+    from .cache import PATH_CACHE
+    from .weather import run
+
+    run.ocf_plot_grid_wind(path_base or PATH_CACHE / "ocf_runs")
+
+
 if __name__ == "__main__":
     app()

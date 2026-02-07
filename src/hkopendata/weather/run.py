@@ -5,12 +5,14 @@ from dataclasses import asdict, dataclass
 from itertools import chain
 from logging import getLogger
 from pathlib import Path
-from typing import Generator, TypedDict
+from typing import Any, Generator, TypedDict
 
 import httpx
 import orjson
 import polars as pl
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+
+import numpy as np
 
 from .ocf import fetch_ocf
 from .station import grid, stations
@@ -84,9 +86,17 @@ class Run:
             return orjson.loads(f.read())  # type: ignore
 
 
-def ocf_runs(path_base: Path) -> Generator[Run, None, None]:
-    for run in path_base.iterdir():
-        if run.is_dir():
+def ocf_runs(
+    path_base: Path, *, sort_reverse: bool | None = True
+) -> Generator[Run, None, None]:
+    """:param sort_reverse: True for newest first, False for oldest first,
+    None for no sorting"""
+    if sort_reverse is None:
+        paths = path_base.iterdir()
+    else:
+        paths = (p for p in sorted(path_base.iterdir(), reverse=sort_reverse))
+    for run in paths:
+        if run.is_dir() and run.name.isdigit():
             yield Run(fp=run)
 
 
@@ -98,42 +108,114 @@ def ocf_plot_hourly_wind(path_base: Path) -> None:
     HKO = (114.174637, 22.302219)
     DISTANCE_MAX = 1.2
     DISTANCE_MAX_STATION = 0.4
+    try:
+        base_dir = next(ocf_runs(path_base, sort_reverse=True))
+    except StopIteration:
+        return
 
-    for base_dir in ocf_runs(path_base):
-        hourly_dir = base_dir.fp / "hourly"
+    hourly_dir = base_dir.fp / "hourly"
 
-        # arr = spatial_grid()
-        for station in base_dir.load_stations():
-            time, wind_speed = (
-                pl.scan_parquet(hourly_dir / f"{station['id']}.parquet")
-                .select("ForecastHour", "ForecastWindSpeed")
-                .collect()
+    for station in base_dir.load_stations():
+        time, wind_speed = (
+            pl.scan_parquet(hourly_dir / f"{station['id']}.parquet")
+            .select("ForecastHour", "ForecastWindSpeed")
+            .collect()
+        )
+        distance = (
+            (HKO[0] - station["lng"]) ** 2 + (HKO[1] - station["lat"]) ** 2
+        ) ** 0.5
+        if not station["grid"] and station["aws"]:
+            plt.plot(
+                time,
+                wind_speed,
+                label=station["id"],
+                lw=(DISTANCE_MAX_STATION - distance) / DISTANCE_MAX_STATION * 3,
             )
-            distance = (
-                (HKO[0] - station["lng"]) ** 2 + (HKO[1] - station["lat"]) ** 2
-            ) ** 0.5
-            if not station["grid"] and station["aws"]:
-                plt.plot(
-                    time,
-                    wind_speed,
-                    label=station["id"],
-                    lw=(DISTANCE_MAX_STATION - distance) / DISTANCE_MAX_STATION * 3,
-                )
-                continue
-            if station["grid"]:
-                plt.plot(
-                    time,
-                    wind_speed,
-                    color="white",
-                    alpha=(DISTANCE_MAX - distance) / DISTANCE_MAX * 0.1,
-                )
-                # i = int(station["id"][1:]) - 1
-                # arr.flat[i] = df["ForecastWindSpeed"][5]
+            continue
+        if station["grid"]:
+            plt.plot(
+                time,
+                wind_speed,
+                color="white",
+                alpha=(DISTANCE_MAX - distance) / DISTANCE_MAX * 0.1,
+            )
 
-        # plt.imshow(arr, cmap="viridis")
-        # plt.colorbar()
-        plt.legend()
-        plt.xticks(rotation=45)
-        plt.show()
-        plt.close()
-        # break
+    plt.legend()
+    plt.xticks(rotation=45)
+    plt.show()
+    plt.close()
+
+
+def ocf_plot_grid_wind(path_base: Path) -> None:
+    import matplotlib.pyplot as plt
+    from matplotlib.widgets import Slider
+    from mpl_toolkits.basemap import Basemap
+
+    plt.style.use("dark_background")
+    try:
+        base_dir = next(ocf_runs(path_base, sort_reverse=True))
+    except StopIteration:
+        return
+    hourly_dir = base_dir.fp / "hourly"
+    if not (sts := [s for s in base_dir.load_stations() if s["grid"]]):
+        return
+    df0 = pl.read_parquet(
+        hourly_dir / f"{sts[0]['id']}.parquet", columns=["ForecastHour"]
+    )
+    hours = df0["ForecastHour"].to_list()
+    if (T := len(hours)) == 0:
+        return
+    data = np.full((T, 15, 16), np.nan, dtype=float)
+    for s in sts:
+        idx = int(s["id"][1:]) - 1
+        r, c = divmod(idx, 16)
+        df = pl.read_parquet(
+            hourly_dir / f"{s['id']}.parquet", columns=["ForecastWindSpeed"]
+        ).with_columns(pl.col("ForecastWindSpeed").cast(pl.Float64))
+        ws = df["ForecastWindSpeed"].to_numpy()
+        n = min(T, ws.shape[0])
+        if n:
+            data[:n, r, c] = ws[:n]
+    vmin = float(np.nanmin(data))
+    vmax = float(np.nanmax(data))
+    fig, ax = plt.subplots()
+    lons = sorted({float(s["lng"]) for s in sts})
+    lats = sorted({float(s["lat"]) for s in sts})
+    dlon = (lons[1] - lons[0]) if len(lons) > 1 else 0.1
+    dlat = (lats[1] - lats[0]) if len(lats) > 1 else 0.1
+    xmin, xmax = lons[0] - dlon / 2, lons[-1] + dlon / 2
+    ymin, ymax = lats[0] - dlat / 2, lats[-1] + dlat / 2
+    im = ax.imshow(
+        data[0],
+        cmap="turbo",
+        vmin=vmin,
+        vmax=vmax,
+        extent=(xmin, xmax, ymin, ymax),
+        origin="upper",
+    )
+    m = Basemap(
+        projection="cyl",
+        llcrnrlon=xmin,
+        urcrnrlon=xmax,
+        llcrnrlat=ymin,
+        urcrnrlat=ymax,
+        resolution="h",
+        ax=ax,
+    )
+    m.drawcoastlines(color="white", linewidth=0.5)
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(ymin, ymax)
+    plt.colorbar(im, ax=ax)
+    ax_slider = plt.axes((0.2, 0.02, 0.6, 0.03))
+    slider = Slider(ax_slider, "t", 0, T - 1, valinit=0, valstep=1)
+    slider.valtext.set_text(str(hours[0]))
+
+    def update(val: Any) -> None:
+        i = int(slider.val)
+        im.set_data(data[i])
+        slider.valtext.set_text(str(hours[i]))
+        fig.canvas.draw_idle()
+
+    slider.on_changed(update)
+    plt.show()
+    plt.close()
