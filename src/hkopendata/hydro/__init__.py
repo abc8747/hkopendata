@@ -7,10 +7,11 @@ if TYPE_CHECKING:
     from httpx import AsyncClient
 
 # govhk.mardep.eseago.BuildConfig
-API_ENDPOINT = "https://eseago.hydro.gov.hk/v2"
+ESEAGO_ENDPOINT = "https://eseago.hydro.gov.hk/v2"
 VERSION = "3.0.28"
 # govhk.mardep.eseago.eSeaGoApp$Companion.initialize
-DEFAULT_PARAMS = {"token": "eseago", "app_version": VERSION, "os": "android"}
+ESEAGO_PARAMS = {"token": "eseago", "app_version": VERSION, "os": "android"}
+TIDE_ENDPOINT = "https://tide1.hydro.gov.hk/api"
 
 DATA_DIR = Path(__file__).parent / "data"
 

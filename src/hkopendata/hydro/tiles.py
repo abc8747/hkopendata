@@ -13,10 +13,10 @@ from rich.progress import (
     TransferSpeedColumn,
 )
 
-from . import API_ENDPOINT, DEFAULT_PARAMS, ensure_http1
+from . import ESEAGO_ENDPOINT, ESEAGO_PARAMS, ensure_http1
 
 
-class _OfflineTilesVersion(BaseXmlModel, tag="result"):
+class OfflineTilesVersion(BaseXmlModel, tag="result"):
     file_path: str = element()
     file_key: str = element()
 
@@ -24,7 +24,7 @@ class _OfflineTilesVersion(BaseXmlModel, tag="result"):
     async def fetch(client: httpx.AsyncClient) -> str:
         ensure_http1(client)
         response = await client.get(
-            f"{API_ENDPOINT}/map_download", params=DEFAULT_PARAMS
+            f"{ESEAGO_ENDPOINT}/map_download", params=ESEAGO_PARAMS
         )
         response.raise_for_status()
         return response.text
@@ -38,8 +38,8 @@ class OfflineTiles:
     @staticmethod
     async def fetch(client: httpx.AsyncClient) -> AsyncGenerator[bytes, None]:
         ensure_http1(client)
-        request = _OfflineTilesVersion.from_xml(
-            await _OfflineTilesVersion.fetch(client)
+        request = OfflineTilesVersion.from_xml(
+            await OfflineTilesVersion.fetch(client)
         ).request
         response = await client.send(
             request=request,

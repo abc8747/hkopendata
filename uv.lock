@@ -298,7 +298,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -391,6 +391,7 @@ source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
     { name = "httpx", extra = ["http2", "zstd"] },
+    { name = "isqx" },
     { name = "orjson" },
     { name = "polars" },
     { name = "rich" },
@@ -433,6 +434,7 @@ requires-dist = [
     { name = "basemap", marker = "extra == 'plot'", specifier = ">=1.3.0" },
     { name = "basemap-data-hires", marker = "extra == 'plot'", specifier = ">=2.0.0" },
     { name = "httpx", extras = ["http2", "zstd"], specifier = ">=0.28.1" },
+    { name = "isqx", specifier = ">=0.1.2" },
     { name = "matplotlib", marker = "extra == 'plot'", specifier = ">=3.9.4" },
     { name = "orjson", specifier = ">=3.11.0" },
     { name = "polars", specifier = ">=1.31.0" },
@@ -522,6 +524,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/72/34/14ca021ce8e5dfedc35312d08ba8bf51fdd999c576889fc2c24cb97f4f10/iniconfig-2.3.0.tar.gz", hash = "sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730", size = 20503, upload-time = "2025-10-18T21:55:43.219Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
+]
+
+[[package]]
+name = "isqx"
+version = "0.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/05/24/7bf8af5502b5f6548778b72f888d41d95f6946a9bb718a35d0a74271eba8/isqx-0.1.2.tar.gz", hash = "sha256:341552103f34e66a6a17848170f14e8fc60406963f13b8705f32b8379a6f75ff", size = 482731, upload-time = "2025-12-16T20:46:50.595Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/30/31/0e5f1fce0346cace1769caf384b8e97b9ec4032a0f2c62a8fb93dc15ceb3/isqx-0.1.2-py3-none-any.whl", hash = "sha256:5a52a52610d42346fc19de5d00d35fe54cae223ddb09a90c4e75fc2af155f91f", size = 124024, upload-time = "2025-12-16T20:46:48.926Z" },
 ]
 
 [[package]]

@@ -4,7 +4,7 @@ from typing import List
 import httpx
 from pydantic_xml import BaseXmlModel, element, wrapped
 
-from . import API_ENDPOINT, DATA_DIR, DEFAULT_PARAMS, ensure_http1
+from . import DATA_DIR, ESEAGO_ENDPOINT, ESEAGO_PARAMS, ensure_http1
 
 _FP = DATA_DIR / "version.xml"  # TODO: save to cache instead?
 
@@ -47,8 +47,8 @@ class Version(BaseXmlModel, tag="result"):
         ensure_http1(client)
         request = httpx.Request(
             "GET",
-            f"{API_ENDPOINT}/check_version",
-            params=DEFAULT_PARAMS,
+            f"{ESEAGO_ENDPOINT}/check_version",
+            params=ESEAGO_PARAMS,
         )
         response = await client.send(request)
         response.raise_for_status()
