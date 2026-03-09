@@ -386,7 +386,7 @@ wheels = [
 
 [[package]]
 name = "hkopendata"
-version = "0.0.1"
+version = "0.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
@@ -394,8 +394,6 @@ dependencies = [
     { name = "httpx", extra = ["http2", "zstd"] },
     { name = "isqx" },
     { name = "orjson" },
-    { name = "polars" },
-    { name = "rich" },
 ]
 
 [package.optional-dependencies]
@@ -406,6 +404,9 @@ cli = [
 hydro = [
     { name = "pydantic" },
     { name = "pydantic-xml" },
+]
+ocf = [
+    { name = "polars" },
 ]
 plot = [
     { name = "basemap" },
@@ -439,13 +440,12 @@ requires-dist = [
     { name = "isqx", specifier = ">=0.1" },
     { name = "matplotlib", marker = "extra == 'plot'", specifier = ">=3.9.4" },
     { name = "orjson", specifier = ">=3.11.0" },
-    { name = "polars", specifier = ">=1.31.0" },
+    { name = "polars", marker = "extra == 'ocf'", specifier = ">=1.31.0" },
     { name = "pydantic", marker = "extra == 'hydro'", specifier = ">=2.11.7" },
     { name = "pydantic-xml", marker = "extra == 'hydro'", specifier = ">=2.17.3" },
-    { name = "rich", specifier = ">=14.0.0" },
     { name = "typer", marker = "extra == 'cli'", specifier = ">=0.16.0" },
 ]
-provides-extras = ["cli", "plot", "hydro"]
+provides-extras = ["cli", "plot", "hydro", "ocf"]
 
 [package.metadata.requires-dev]
 lint = [{ name = "ruff", specifier = ">=0.12.4" }]

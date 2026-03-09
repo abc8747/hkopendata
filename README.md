@@ -32,7 +32,12 @@ uv sync --all-extras --all-groups
 uv tool install ".[cli]" --editable
 ```
 
-## features
+## Features
+
+### transport
+
+- [hkopendata.transport.kmb](src/hkopendata/transport/kmb.py) for KMB route / stop / route-stop / ETA metadata
+- [hkopendata.transport.gmb](src/hkopendata/transport/gmb.py) for GMB route / stop / route-stop / ETA / last-update metadata
 
 ### hydro
 

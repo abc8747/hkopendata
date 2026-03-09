@@ -1,6 +1,6 @@
 [project]
 name = "hkopendata"
-version = "0.0.1"
+version = "0.0.2"
 description = "Open geospatial data in Hong Kong"
 authors = [{ name = "Abraham Cheung", email = "abraham@ylcheung.com" }]
 requires-python = ">=3.10"
@@ -26,14 +26,13 @@ dependencies = [
     "httpx[http2,zstd]>=0.28.1",
     "isqx>=0.1",
     "orjson>=3.11.0",
-    "polars>=1.31.0",
-    "rich>=14.0.0",
 ]
 
 [project.optional-dependencies]
 cli = ["appdirs>=1.4.4", "typer>=0.16.0"]
 plot = ["matplotlib>=3.9.4", "basemap>=1.3.0", "basemap-data-hires>=2.0.0"]
 hydro = ["pydantic>=2.11.7", "pydantic-xml>=2.17.3"]
+ocf = ["polars>=1.31.0"]
 
 [project.scripts]
 hkopendata = 'hkopendata.cli:app'

@@ -9,6 +9,7 @@ from typing import (
     Callable,
     Generic,
     Literal,
+    Mapping,
     NoReturn,
     ParamSpec,
     TypeAlias,
@@ -96,6 +97,10 @@ Result: TypeAlias = Union[Ok[T], Err[E]]
 _TypedDictT = TypeVar("_TypedDictT")
 ParseError: TypeAlias = httpx.HTTPStatusError | orjson.JSONDecodeError
 GetJsonError: TypeAlias = httpx.HTTPError | orjson.JSONDecodeError
+DEFAULT_JSON_HEADERS: Mapping[str, str] = {
+    "User-Agent": "Mozilla/5.0",
+    "Accept": "application/json",
+}
 
 
 class _Parser(Generic[_TypedDictT]):
@@ -108,6 +113,20 @@ class _Parser(Generic[_TypedDictT]):
             return Ok(cast(_TypedDictT, orjson.loads(response.content)))
         except (httpx.HTTPStatusError, orjson.JSONDecodeError) as exc:
             return Err(exc)
+
+
+async def _get_json(
+    client: httpx.AsyncClient,
+    endpoint: str,
+    *,
+    parse: Callable[[httpx.Response], Result[_TypedDictT, ParseError]],
+    headers: Mapping[str, str] = DEFAULT_JSON_HEADERS,
+) -> Result[_TypedDictT, GetJsonError]:
+    try:
+        response = await client.get(endpoint, headers=headers)
+    except httpx.HTTPError as exc:
+        return Err(exc)
+    return parse(response)  # type: ignore
 
 
 def is_retryable_http_exception(

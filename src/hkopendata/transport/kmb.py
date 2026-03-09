@@ -13,25 +13,27 @@ See: <https://data.etabus.gov.hk/datagovhk/kmb_eta_data_dictionary.pdf>
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Annotated, Generic, Literal, TypeAlias, TypeVar, cast
+from typing import Annotated, Literal, TypeAlias
 
 import httpx
 from annotated_types import Gt
 from typing_extensions import NotRequired, TypedDict
 
-from ..types import LatitudeDeg, LongitudeDeg
+from ..types import (
+    ApiResponse,
+    DataTimestamp,
+    LatitudeDeg,
+    LongitudeDeg,
+)
 from ..utils import (
-    Err,
+    DEFAULT_JSON_HEADERS,
     GetJsonError,
     Result,
+    _get_json,
     _Parser,
 )
 
 API_BASE = "https://data.etabus.gov.hk/v1/transport/kmb"
-DEFAULT_HEADERS = {
-    "User-Agent": "Mozilla/5.0",
-    "Accept": "application/json",
-}
 
 CompanyCode = Literal["KMB", "LWB"]
 Direction = Literal["I", "O"]
@@ -48,24 +50,9 @@ EtaStopSeq: TypeAlias = Annotated[int, Gt(0)]
 """1-based stop order within ETA payloads, e.g. `1`."""
 EtaSeq: TypeAlias = Annotated[int, Gt(0)]
 """1-based ETA row order for the same stop."""
-GeneratedTimestamp: TypeAlias = str
-"""Envelope timestamp in ISO 8601 with offset, e.g. `2026-03-09T14:03:46+08:00`."""
-ApiVersion: TypeAlias = str
-"""Top-level API version string, currently `"1.0"`."""
 StopId: TypeAlias = str
 """KMB stop identifier, usually 16 uppercase hex-like chars such as
 `18492910339410B1`."""
-
-T = TypeVar("T")
-
-
-class BaseResponse(TypedDict, Generic[T]):
-    """Common raw response used by the KMB public API."""
-
-    type: str
-    version: ApiVersion
-    generated_timestamp: GeneratedTimestamp
-    data: T
 
 
 class Route(TypedDict):
@@ -81,7 +68,7 @@ class Route(TypedDict):
     dest_tc: str
     dest_sc: str
     co: NotRequired[CompanyCode]
-    data_timestamp: NotRequired[str]
+    data_timestamp: NotRequired[DataTimestamp]
 
 
 class Stop(TypedDict):
@@ -93,7 +80,7 @@ class Stop(TypedDict):
     name_sc: str
     lat: LatitudeDeg[str]
     long: LongitudeDeg[str]
-    data_timestamp: NotRequired[str]
+    data_timestamp: NotRequired[DataTimestamp]
 
 
 class RouteStop(TypedDict):
@@ -106,7 +93,7 @@ class RouteStop(TypedDict):
     stop: StopId
     co: NotRequired[CompanyCode]
     dir: NotRequired[Direction]
-    data_timestamp: NotRequired[str]
+    data_timestamp: NotRequired[DataTimestamp]
 
 
 class Eta(TypedDict):
@@ -126,17 +113,17 @@ class Eta(TypedDict):
     rmk_tc: str
     rmk_sc: str
     rmk_en: str
-    data_timestamp: str
+    data_timestamp: DataTimestamp
     stop: NotRequired[StopId]
 
 
-RouteResponse: TypeAlias = BaseResponse[Route | dict[str, object]]
-RouteListResponse: TypeAlias = BaseResponse[list[Route]]
-StopResponse: TypeAlias = BaseResponse[Stop | dict[str, object]]
-StopListResponse: TypeAlias = BaseResponse[list[Stop]]
-RouteStopListResponse: TypeAlias = BaseResponse[list[RouteStop]]
-RouteEtaResponse: TypeAlias = BaseResponse[list[Eta]]
-StopEtaResponse: TypeAlias = BaseResponse[list[Eta]]
+RouteResponse: TypeAlias = ApiResponse[Route | dict[str, object]]
+RouteListResponse: TypeAlias = ApiResponse[list[Route]]
+StopResponse: TypeAlias = ApiResponse[Stop | dict[str, object]]
+StopListResponse: TypeAlias = ApiResponse[list[Stop]]
+RouteStopListResponse: TypeAlias = ApiResponse[list[RouteStop]]
+RouteEtaResponse: TypeAlias = ApiResponse[list[Eta]]
+StopEtaResponse: TypeAlias = ApiResponse[list[Eta]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -209,11 +196,12 @@ async def fetch_routes(
     top-level `type`, `version`, and `generated_timestamp` envelope fields.
     """
 
-    try:
-        response = await client.get(f"{API_BASE}/route", headers=DEFAULT_HEADERS)
-    except httpx.HTTPError as exc:
-        return Err(exc)
-    return cast(Result[RouteListResponse, GetJsonError], route_list_parse(response))
+    return await _get_json(
+        client,
+        f"{API_BASE}/route",
+        parse=route_list_parse,
+        headers=DEFAULT_JSON_HEADERS,
+    )
 
 
 async def fetch_route(
@@ -222,14 +210,12 @@ async def fetch_route(
 ) -> Result[RouteResponse, GetJsonError]:
     """Fetch the raw single-route response."""
 
-    try:
-        response = await client.get(
-            f"{API_BASE}/route/{request.route}/{_direction_path(request.bound)}/{request.service_type}",
-            headers=DEFAULT_HEADERS,
-        )
-    except httpx.HTTPError as exc:
-        return Err(exc)
-    return cast(Result[RouteResponse, GetJsonError], route_parse(response))
+    return await _get_json(
+        client,
+        f"{API_BASE}/route/{request.route}/{_direction_path(request.bound)}/{request.service_type}",
+        parse=route_parse,
+        headers=DEFAULT_JSON_HEADERS,
+    )
 
 
 async def fetch_stops(
@@ -237,11 +223,12 @@ async def fetch_stops(
 ) -> Result[StopListResponse, GetJsonError]:
     """Fetch the raw stop-list response."""
 
-    try:
-        response = await client.get(f"{API_BASE}/stop", headers=DEFAULT_HEADERS)
-    except httpx.HTTPError as exc:
-        return Err(exc)
-    return cast(Result[StopListResponse, GetJsonError], stop_list_parse(response))
+    return await _get_json(
+        client,
+        f"{API_BASE}/stop",
+        parse=stop_list_parse,
+        headers=DEFAULT_JSON_HEADERS,
+    )
 
 
 async def fetch_stop(
@@ -250,14 +237,12 @@ async def fetch_stop(
 ) -> Result[StopResponse, GetJsonError]:
     """Fetch the raw single-stop response."""
 
-    try:
-        response = await client.get(
-            f"{API_BASE}/stop/{request.stop_id}",
-            headers=DEFAULT_HEADERS,
-        )
-    except httpx.HTTPError as exc:
-        return Err(exc)
-    return cast(Result[StopResponse, GetJsonError], stop_parse(response))
+    return await _get_json(
+        client,
+        f"{API_BASE}/stop/{request.stop_id}",
+        parse=stop_parse,
+        headers=DEFAULT_JSON_HEADERS,
+    )
 
 
 async def fetch_route_stops(
@@ -266,16 +251,11 @@ async def fetch_route_stops(
 ) -> Result[RouteStopListResponse, GetJsonError]:
     """Fetch the raw route-stop-list response."""
 
-    try:
-        response = await client.get(
-            f"{API_BASE}/route-stop/{request.route}/{_direction_path(request.bound)}/{request.service_type}",
-            headers=DEFAULT_HEADERS,
-        )
-    except httpx.HTTPError as exc:
-        return Err(exc)
-    return cast(
-        Result[RouteStopListResponse, GetJsonError],
-        route_stop_list_parse(response),
+    return await _get_json(
+        client,
+        f"{API_BASE}/route-stop/{request.route}/{_direction_path(request.bound)}/{request.service_type}",
+        parse=route_stop_list_parse,
+        headers=DEFAULT_JSON_HEADERS,
     )
 
 
@@ -285,14 +265,12 @@ async def fetch_route_eta(
 ) -> Result[RouteEtaResponse, GetJsonError]:
     """Fetch the raw route-ETA response."""
 
-    try:
-        response = await client.get(
-            f"{API_BASE}/route-eta/{request.route}/{request.service_type}",
-            headers=DEFAULT_HEADERS,
-        )
-    except httpx.HTTPError as exc:
-        return Err(exc)
-    return cast(Result[RouteEtaResponse, GetJsonError], route_eta_parse(response))
+    return await _get_json(
+        client,
+        f"{API_BASE}/route-eta/{request.route}/{request.service_type}",
+        parse=route_eta_parse,
+        headers=DEFAULT_JSON_HEADERS,
+    )
 
 
 async def fetch_stop_eta(
@@ -301,11 +279,9 @@ async def fetch_stop_eta(
 ) -> Result[StopEtaResponse, GetJsonError]:
     """Fetch the raw stop-ETA response."""
 
-    try:
-        response = await client.get(
-            f"{API_BASE}/stop-eta/{request.stop_id}",
-            headers=DEFAULT_HEADERS,
-        )
-    except httpx.HTTPError as exc:
-        return Err(exc)
-    return cast(Result[StopEtaResponse, GetJsonError], stop_eta_parse(response))
+    return await _get_json(
+        client,
+        f"{API_BASE}/stop-eta/{request.stop_id}",
+        parse=stop_eta_parse,
+        headers=DEFAULT_JSON_HEADERS,
+    )

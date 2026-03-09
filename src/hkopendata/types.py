@@ -1,8 +1,9 @@
-from typing import Annotated, TypeAlias, TypeVar
+from typing import Annotated, Generic, TypeAlias, TypeVar
 
 import isqx
 from annotated_types import Gt, Le
 from isqx import usc
+from typing_extensions import TypedDict
 
 _T = TypeVar("_T")
 
@@ -31,3 +32,21 @@ Hour: TypeAlias = Annotated[int, Gt(0), Le(23)]
 
 HkoStationId: TypeAlias = str
 HydroStationId: TypeAlias = str
+
+ApiVersion: TypeAlias = str
+"""Generic public API version string, e.g. `1.0`."""
+GeneratedTimestamp: TypeAlias = str
+"""Top-level response timestamp in ISO 8601 with offset."""
+DataTimestamp: TypeAlias = str
+"""Payload timestamp in ISO 8601 with offset."""
+
+_ResponseT = TypeVar("_ResponseT")
+
+
+class ApiResponse(TypedDict, Generic[_ResponseT]):
+    """Common raw response envelope shared by government transport APIs."""
+
+    type: str
+    version: ApiVersion
+    generated_timestamp: GeneratedTimestamp
+    data: _ResponseT
