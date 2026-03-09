@@ -13,14 +13,19 @@ See: <https://data.etabus.gov.hk/datagovhk/kmb_eta_data_dictionary.pdf>
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Annotated, Callable, Generic, Literal, TypeAlias, TypeVar
+from typing import Annotated, Generic, Literal, TypeAlias, TypeVar, cast
 
 import httpx
 from annotated_types import Gt
 from typing_extensions import NotRequired, TypedDict
 
 from ..types import LatitudeDeg, LongitudeDeg
-from ..utils import ParseError, Result, _Parser
+from ..utils import (
+    Err,
+    GetJsonError,
+    Result,
+    _Parser,
+)
 
 API_BASE = "https://data.etabus.gov.hk/v1/transport/kmb"
 DEFAULT_HEADERS = {
@@ -195,91 +200,112 @@ def _direction_path(bound: Direction) -> DirectionPath:
     return "inbound" if bound == "I" else "outbound"
 
 
-async def _get_json(
-    client: httpx.AsyncClient,
-    path: str,
-    parser: Callable[[Annotated[httpx.Response, T]], Result[T, ParseError]],
-) -> T:
-    response = await client.get(f"{API_BASE}{path}", headers=DEFAULT_HEADERS)
-    return parser(response).unwrap()
-
-
 async def fetch_routes(
     client: httpx.AsyncClient,
-) -> RouteListResponse:
+) -> Result[RouteListResponse, GetJsonError]:
     """Fetch the raw route-list response.
 
     The returned object mirrors the public API body exactly, including the
     top-level `type`, `version`, and `generated_timestamp` envelope fields.
     """
 
-    return await _get_json(client, "/route", route_list_parse)
+    try:
+        response = await client.get(f"{API_BASE}/route", headers=DEFAULT_HEADERS)
+    except httpx.HTTPError as exc:
+        return Err(exc)
+    return cast(Result[RouteListResponse, GetJsonError], route_list_parse(response))
 
 
 async def fetch_route(
     client: httpx.AsyncClient,
     request: RouteRequest,
-) -> RouteResponse:
+) -> Result[RouteResponse, GetJsonError]:
     """Fetch the raw single-route response."""
 
-    return await _get_json(
-        client,
-        f"/route/{request.route}/{_direction_path(request.bound)}/{request.service_type}",
-        route_parse,
-    )
+    try:
+        response = await client.get(
+            f"{API_BASE}/route/{request.route}/{_direction_path(request.bound)}/{request.service_type}",
+            headers=DEFAULT_HEADERS,
+        )
+    except httpx.HTTPError as exc:
+        return Err(exc)
+    return cast(Result[RouteResponse, GetJsonError], route_parse(response))
 
 
 async def fetch_stops(
     client: httpx.AsyncClient,
-) -> StopListResponse:
+) -> Result[StopListResponse, GetJsonError]:
     """Fetch the raw stop-list response."""
 
-    return await _get_json(client, "/stop", stop_list_parse)
+    try:
+        response = await client.get(f"{API_BASE}/stop", headers=DEFAULT_HEADERS)
+    except httpx.HTTPError as exc:
+        return Err(exc)
+    return cast(Result[StopListResponse, GetJsonError], stop_list_parse(response))
 
 
 async def fetch_stop(
     client: httpx.AsyncClient,
     request: StopRequest,
-) -> StopResponse:
+) -> Result[StopResponse, GetJsonError]:
     """Fetch the raw single-stop response."""
 
-    return await _get_json(client, f"/stop/{request.stop_id}", stop_parse)
+    try:
+        response = await client.get(
+            f"{API_BASE}/stop/{request.stop_id}",
+            headers=DEFAULT_HEADERS,
+        )
+    except httpx.HTTPError as exc:
+        return Err(exc)
+    return cast(Result[StopResponse, GetJsonError], stop_parse(response))
 
 
 async def fetch_route_stops(
     client: httpx.AsyncClient,
     request: RouteStopsRequest,
-) -> RouteStopListResponse:
+) -> Result[RouteStopListResponse, GetJsonError]:
     """Fetch the raw route-stop-list response."""
 
-    return await _get_json(
-        client,
-        f"/route-stop/{request.route}/{_direction_path(request.bound)}/{request.service_type}",
-        route_stop_list_parse,
+    try:
+        response = await client.get(
+            f"{API_BASE}/route-stop/{request.route}/{_direction_path(request.bound)}/{request.service_type}",
+            headers=DEFAULT_HEADERS,
+        )
+    except httpx.HTTPError as exc:
+        return Err(exc)
+    return cast(
+        Result[RouteStopListResponse, GetJsonError],
+        route_stop_list_parse(response),
     )
 
 
 async def fetch_route_eta(
     client: httpx.AsyncClient,
     request: RouteEtaRequest,
-) -> RouteEtaResponse:
+) -> Result[RouteEtaResponse, GetJsonError]:
     """Fetch the raw route-ETA response."""
 
-    return await _get_json(
-        client,
-        f"/route-eta/{request.route}/{request.service_type}",
-        route_eta_parse,
-    )
+    try:
+        response = await client.get(
+            f"{API_BASE}/route-eta/{request.route}/{request.service_type}",
+            headers=DEFAULT_HEADERS,
+        )
+    except httpx.HTTPError as exc:
+        return Err(exc)
+    return cast(Result[RouteEtaResponse, GetJsonError], route_eta_parse(response))
 
 
 async def fetch_stop_eta(
     client: httpx.AsyncClient,
     request: StopEtaRequest,
-) -> StopEtaResponse:
+) -> Result[StopEtaResponse, GetJsonError]:
     """Fetch the raw stop-ETA response."""
 
-    return await _get_json(
-        client,
-        f"/stop-eta/{request.stop_id}",
-        stop_eta_parse,
-    )
+    try:
+        response = await client.get(
+            f"{API_BASE}/stop-eta/{request.stop_id}",
+            headers=DEFAULT_HEADERS,
+        )
+    except httpx.HTTPError as exc:
+        return Err(exc)
+    return cast(Result[StopEtaResponse, GetJsonError], stop_eta_parse(response))

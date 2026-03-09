@@ -1,11 +1,16 @@
+import asyncio
 from dataclasses import dataclass
+from functools import wraps
 from typing import (
     TYPE_CHECKING,
     Annotated,
     Any,
+    Awaitable,
+    Callable,
     Generic,
     Literal,
     NoReturn,
+    ParamSpec,
     TypeAlias,
     TypeVar,
     Union,
@@ -26,6 +31,7 @@ else:
 
 T = TypeVar("T")
 E = TypeVar("E")
+P = ParamSpec("P")
 
 
 @dataclass_frozen
@@ -89,6 +95,7 @@ Result: TypeAlias = Union[Ok[T], Err[E]]
 
 _TypedDictT = TypeVar("_TypedDictT")
 ParseError: TypeAlias = httpx.HTTPStatusError | orjson.JSONDecodeError
+GetJsonError: TypeAlias = httpx.HTTPError | orjson.JSONDecodeError
 
 
 class _Parser(Generic[_TypedDictT]):
@@ -101,3 +108,44 @@ class _Parser(Generic[_TypedDictT]):
             return Ok(cast(_TypedDictT, orjson.loads(response.content)))
         except (httpx.HTTPStatusError, orjson.JSONDecodeError) as exc:
             return Err(exc)
+
+
+def is_retryable_http_exception(
+    exc: object,
+    *,
+    status_codes: frozenset[int] = frozenset({429, 500, 502, 503, 504}),
+) -> bool:
+    if isinstance(exc, (httpx.TransportError, httpx.TimeoutException)):
+        return True
+    return (
+        isinstance(exc, httpx.HTTPStatusError)
+        and exc.response.status_code in status_codes
+    )
+
+
+def with_retry(
+    func: Callable[P, Awaitable[Result[T, E]]],
+    *,
+    retries: int = 3,
+    base_delay_seconds: float = 0.5,
+    should_retry: Callable[[object], bool] = lambda exc: is_retryable_http_exception(
+        exc,
+        status_codes=frozenset({403, 429, 500, 502, 503, 504}),
+    ),
+) -> Callable[P, Awaitable[Result[T, E]]]:
+    @wraps(func)
+    async def wrapped(*args: P.args, **kwargs: P.kwargs) -> Result[T, E]:
+        for attempt in range(retries):
+            result = await func(*args, **kwargs)
+            if result.is_ok():
+                return result
+
+            error = result.err()
+            if error is None or attempt + 1 >= retries or not should_retry(error):
+                return result
+
+            await asyncio.sleep(base_delay_seconds * (attempt + 1))
+
+        raise RuntimeError("unreachable")
+
+    return wrapped
